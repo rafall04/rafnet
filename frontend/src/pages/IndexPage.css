@@ -620,31 +620,14 @@
   border-radius: var(--radius-2xl);
   padding: var(--space-8);
   text-align: center;
-  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
   position: relative;
   overflow: hidden;
 }
 
-.feature-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 3px;
-  background: linear-gradient(90deg, var(--accent-500) 0%, var(--primary-500) 100%);
-  transform: scaleX(0);
-  transition: transform 0.4s ease;
-}
-
 .feature-card:hover {
-  transform: translateY(-8px);
   border-color: var(--card-border-hover);
-  box-shadow: var(--shadow-xl), var(--shadow-glow);
-}
-
-.feature-card:hover::before {
-  transform: scaleX(1);
+  box-shadow: var(--shadow-lg);
 }
 
 .feature-icon-wrapper {
@@ -676,7 +659,6 @@
 
 .feature-card:hover .feature-icon-bg {
   opacity: 0.25;
-  transform: scale(1.1);
 }
 
 .feature-title {
@@ -736,7 +718,6 @@
 
 .coverage-card:hover {
   background: linear-gradient(135deg, rgba(220, 38, 38, 0.5), rgba(220, 38, 38, 0.1) 50%);
-  transform: translateY(-8px);
 }
 
 .coverage-card-inner {
@@ -963,9 +944,8 @@
 }
 
 .voucher-card:hover {
-  transform: translateY(-4px);
   border-color: var(--card-border-hover);
-  box-shadow: var(--shadow-lg);
+  box-shadow: var(--shadow-md);
 }
 
 .voucher-duration {
@@ -1048,9 +1028,8 @@
 }
 
 .testimonial-card:hover {
-  transform: translateY(-8px);
   border-color: var(--card-border-hover);
-  box-shadow: var(--shadow-xl);
+  box-shadow: var(--shadow-lg);
 }
 
 .testimonial-rating {
@@ -1206,10 +1185,7 @@
 .cta-gradient {
   position: absolute;
   inset: 0;
-  background: 
-    radial-gradient(ellipse 80% 100% at 50% 100%, var(--hero-gradient-1) 0%, transparent 60%),
-    radial-gradient(ellipse 60% 60% at 20% 20%, var(--hero-gradient-2) 0%, transparent 50%),
-    var(--gradient-mesh);
+  background: linear-gradient(135deg, rgba(30, 58, 138, 0.9) 0%, rgba(88, 28, 135, 0.8) 50%, rgba(127, 29, 29, 0.7) 100%);
 }
 
 .cta-content {
@@ -1219,10 +1195,9 @@
   max-width: 700px;
   margin: 0 auto;
   padding: var(--space-12);
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: var(--radius-3xl);
-  backdrop-filter: blur(20px);
 }
 
 .cta-content h2 {
@@ -1311,9 +1286,8 @@
 }
 
 .contact-card:hover {
-  transform: translateY(-8px);
   border-color: var(--card-border-hover);
-  box-shadow: var(--shadow-xl);
+  box-shadow: var(--shadow-lg);
 }
 
 .contact-card-whatsapp:hover {
@@ -1750,20 +1724,6 @@
 }
 
 /* Performance optimizations */
-.hero-bg,
-.hero-glow,
-.hero-particles {
+.hero-bg {
   pointer-events: none;
-}
-
-.particle {
-  will-change: transform, opacity;
-}
-
-.feature-card,
-.coverage-card,
-.testimonial-card,
-.voucher-card,
-.contact-card {
-  will-change: transform;
 }
