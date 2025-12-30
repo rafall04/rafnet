@@ -22,7 +22,7 @@ APP_DIR="/var/www/rafnet"
 DOMAIN="rafnet.my.id"
 ADMIN_USERNAME="admin"
 ADMIN_PASSWORD="Admin123!"
-APP_PORT="810"
+APP_PORT="3810"
 
 # ==================== WARNA ====================
 RED='\033[0;31m'

@@ -1,0 +1,12 @@
+{
+  "name": "Auto Push to GitHub",
+  "description": "Automatically commit and push changes to GitHub when any file is saved",
+  "trigger": {
+    "type": "onFileSave",
+    "pattern": "**/*"
+  },
+  "action": {
+    "type": "agentMessage",
+    "message": "A file was just saved. Please commit this change with a brief, descriptive message and push to GitHub immediately. Keep the commit message concise and relevant to the changed file."
+  }
+}
