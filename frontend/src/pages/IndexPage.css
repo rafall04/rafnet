@@ -1584,6 +1584,33 @@
     z-index: 1001;
   }
   
+  /* Ensure header elements visible on hero for mobile */
+  .header:not(.header-scrolled) .logo-text {
+    color: #ffffff !important;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+  }
+  
+  .header:not(.header-scrolled) .logo-tagline {
+    color: rgba(255, 255, 255, 0.9) !important;
+  }
+  
+  .header:not(.header-scrolled) .mobile-menu-btn {
+    background: rgba(255, 255, 255, 0.25) !important;
+    border-color: rgba(255, 255, 255, 0.4) !important;
+  }
+  
+  .header:not(.header-scrolled) .hamburger,
+  .header:not(.header-scrolled) .hamburger::before,
+  .header:not(.header-scrolled) .hamburger::after {
+    background: #ffffff !important;
+  }
+  
+  .header:not(.header-scrolled) .theme-toggle.mobile-only {
+    background: rgba(255, 255, 255, 0.25) !important;
+    border-color: rgba(255, 255, 255, 0.4) !important;
+    color: #ffffff !important;
+  }
+  
   /* Mobile overlay when menu is open */
   .header-nav::before {
     content: '';
