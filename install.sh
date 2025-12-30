@@ -178,7 +178,7 @@ print_header "Step 8: Create Admin"
 
 cd $APP_DIR/backend
 
-cat > /tmp/seed.js << 'SEEDJS'
+cat > $APP_DIR/backend/seed-temp.js << 'SEEDJS'
 const Database = require('better-sqlite3');
 const bcrypt = require('bcrypt');
 
@@ -235,9 +235,9 @@ SEEDJS
 DB_PATH="$APP_DIR/backend/data/rafnet.db" \
 ADMIN_USER="$ADMIN_USERNAME" \
 ADMIN_PASS="$ADMIN_PASSWORD" \
-node /tmp/seed.js
+node $APP_DIR/backend/seed-temp.js
 
-rm /tmp/seed.js
+rm $APP_DIR/backend/seed-temp.js
 chown www-data:www-data $APP_DIR/backend/data/rafnet.db
 chmod 644 $APP_DIR/backend/data/rafnet.db
 print_ok "Admin user ready"
