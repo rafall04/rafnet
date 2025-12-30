@@ -175,17 +175,6 @@ function IndexPage() {
         <div className="hero-bg">
           <div className="hero-gradient"></div>
           <div className="hero-grid"></div>
-          <div className="hero-glow hero-glow-1"></div>
-          <div className="hero-glow hero-glow-2"></div>
-        <div className="hero-particles">
-            {[...Array(8)].map((_, i) => (
-              <div key={i} className="particle" style={{ 
-                left: `${Math.random() * 100}%`, 
-                animationDelay: `${Math.random() * 5}s`,
-                animationDuration: `${15 + Math.random() * 10}s`
-              }}></div>
-            ))}
-          </div>
         </div>
         
         <div className="hero-content">
