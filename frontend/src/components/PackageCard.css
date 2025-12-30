@@ -1,0 +1,236 @@
+/* Package Card - Premium Theme */
+.package-card {
+  position: relative;
+  background: var(--bg-card);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-2xl);
+  padding: var(--space-8);
+  display: flex;
+  flex-direction: column;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+  backdrop-filter: blur(10px);
+}
+
+.package-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--accent-500) 0%, var(--primary-500) 100%);
+  transform: scaleX(0);
+  transition: transform 0.4s ease;
+}
+
+.package-card:hover {
+  transform: translateY(-12px);
+  border-color: var(--card-border-hover);
+  box-shadow: var(--shadow-xl), var(--shadow-glow);
+}
+
+.package-card:hover::before {
+  transform: scaleX(1);
+}
+
+/* Featured Card */
+.package-card-featured {
+  border-color: var(--card-border-hover);
+  background: linear-gradient(145deg, var(--bg-card) 0%, var(--card-glow) 100%);
+}
+
+.package-card-featured::before {
+  transform: scaleX(1);
+}
+
+.package-card-featured::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at top right, var(--card-glow) 0%, transparent 60%);
+  pointer-events: none;
+}
+
+/* Badge */
+.package-badge {
+  position: absolute;
+  top: var(--space-4);
+  right: var(--space-4);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  background: linear-gradient(135deg, var(--accent-500) 0%, var(--primary-500) 100%);
+  border-radius: var(--radius-full);
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: white;
+  letter-spacing: 1px;
+  box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
+}
+
+.badge-star {
+  font-size: 0.8rem;
+}
+
+/* Package Header */
+.package-header {
+  text-align: center;
+  margin-bottom: var(--space-5);
+}
+
+.package-icon {
+  width: 64px;
+  height: 64px;
+  margin: 0 auto var(--space-4);
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+  border-radius: var(--radius-xl);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent-400);
+  transition: all 0.4s ease;
+}
+
+.package-card:hover .package-icon {
+  background: linear-gradient(135deg, var(--accent-500) 0%, var(--primary-500) 100%);
+  color: white;
+  transform: scale(1.1);
+  box-shadow: 0 8px 30px rgba(59, 130, 246, 0.4);
+}
+
+.package-name {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+/* Speed Badge */
+.package-speed {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  margin: 0 auto var(--space-6);
+  padding: var(--space-2) var(--space-5);
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+  border: 1px solid rgba(59, 130, 246, 0.2);
+  border-radius: var(--radius-full);
+  color: var(--accent-400);
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+/* Price */
+.package-price {
+  text-align: center;
+  margin-bottom: var(--space-5);
+  padding: var(--space-5) 0;
+  border-top: 1px solid var(--border-primary);
+  border-bottom: 1px solid var(--border-primary);
+}
+
+.price-currency {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text-tertiary);
+  vertical-align: top;
+}
+
+.price-value {
+  font-size: 2.75rem;
+  font-weight: 900;
+  background: linear-gradient(135deg, var(--accent-500) 0%, var(--primary-500) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  line-height: 1;
+  margin: 0 var(--space-1);
+}
+
+.price-period {
+  font-size: 1rem;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+/* Description */
+.package-description {
+  color: var(--text-secondary);
+  text-align: center;
+  margin-bottom: var(--space-5);
+  line-height: 1.6;
+  font-size: 0.95rem;
+  flex-grow: 1;
+}
+
+/* Features */
+.package-features {
+  margin-bottom: var(--space-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.feature {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+.feature svg {
+  color: var(--accent-400);
+  flex-shrink: 0;
+}
+
+/* CTA Button - WhatsApp Style */
+.package-cta {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  background: linear-gradient(135deg, #25D366 0%, #128C7E 100%);
+  color: white;
+  border: none;
+  border-radius: var(--radius-xl);
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 20px rgba(37, 211, 102, 0.3);
+}
+
+.package-cta:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 30px rgba(37, 211, 102, 0.5);
+}
+
+.package-cta:active {
+  transform: translateY(0);
+}
+
+.package-cta svg {
+  flex-shrink: 0;
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+  .package-card {
+    padding: var(--space-6);
+  }
+  
+  .price-value {
+    font-size: 2.25rem;
+  }
+  
+  .package-icon {
+    width: 56px;
+    height: 56px;
+  }
+}

@@ -1,0 +1,21 @@
+[Unit]
+Description=RAF NET Backend API
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+WorkingDirectory=/var/www/rafnet/backend
+ExecStart=/usr/bin/node dist/index.js
+Restart=on-failure
+RestartSec=10
+StandardOutput=syslog
+StandardError=syslog
+SyslogIdentifier=rafnet-backend
+Environment=NODE_ENV=production
+Environment=PORT=4500
+Environment=DB_PATH=/var/www/rafnet/backend/data/rafnet.db
+Environment=JWT_SECRET=GANTI_DENGAN_SECRET_YANG_KUAT_DAN_RANDOM
+
+[Install]
+WantedBy=multi-user.target
