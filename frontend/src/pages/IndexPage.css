@@ -1507,8 +1507,8 @@
     right: -100%;
     width: 280px;
     height: 100vh;
-    background: var(--bg-primary);
-    border-left: 1px solid var(--border-primary);
+    background: #ffffff;
+    border-left: 1px solid rgba(0, 0, 0, 0.1);
     flex-direction: column;
     justify-content: flex-start;
     align-items: stretch;
@@ -1524,10 +1524,10 @@
     right: 0;
   }
   
-  /* Light mode mobile nav */
-  [data-theme="light"] .header-nav,
-  :root:not([data-theme="dark"]) .header-nav {
-    background: #ffffff;
+  /* Dark mode mobile nav */
+  [data-theme="dark"] .header-nav {
+    background: var(--bg-primary);
+    border-left-color: var(--border-primary);
   }
   
   /* Nav links wrapper in mobile */
@@ -1537,34 +1537,32 @@
     gap: var(--space-1);
   }
   
-  /* Mobile nav links styling */
+  /* Mobile nav links - ALWAYS dark text on light bg, light text on dark bg */
   .header-nav .nav-link {
     font-size: 1rem;
     font-weight: 500;
     padding: var(--space-4) var(--space-4);
     border-radius: var(--radius-lg);
     text-align: left;
-    color: var(--text-secondary);
+    color: #374151 !important;
+    text-shadow: none !important;
     background: transparent;
     transition: all 0.2s ease;
   }
   
   .header-nav .nav-link:hover {
-    background: var(--bg-tertiary);
-    color: var(--text-primary);
+    background: #f3f4f6;
+    color: #111827 !important;
     transform: translateX(4px);
   }
   
-  /* Light mode mobile nav links */
-  [data-theme="light"] .header-nav .nav-link,
-  :root:not([data-theme="dark"]) .header-nav .nav-link {
-    color: var(--text-secondary);
-    text-shadow: none;
+  /* Dark mode mobile nav links */
+  [data-theme="dark"] .header-nav .nav-link {
+    color: var(--text-secondary) !important;
   }
   
-  [data-theme="light"] .header-nav .nav-link:hover,
-  :root:not([data-theme="dark"]) .header-nav .nav-link:hover {
-    color: var(--text-primary);
+  [data-theme="dark"] .header-nav .nav-link:hover {
+    color: var(--text-primary) !important;
     background: var(--bg-tertiary);
   }
   
