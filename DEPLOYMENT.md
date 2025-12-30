@@ -187,8 +187,7 @@ Isi dengan konfigurasi berikut:
 ```nginx
 server {
     listen 80;
-    server_name your-domain.com www.your-domain.com;
-    # Ganti your-domain.com dengan domain Anda
+    server_name rafnet.my.id www.rafnet.my.id;
     # Atau gunakan IP server jika belum ada domain
 
     # Frontend - Static Files
@@ -272,7 +271,7 @@ sudo apt install -y certbot python3-certbot-nginx
 
 ### 6.2 Generate SSL Certificate
 ```bash
-sudo certbot --nginx -d your-domain.com -d www.your-domain.com
+sudo certbot --nginx -d rafnet.my.id -d www.rafnet.my.id
 ```
 
 Ikuti instruksi yang muncul. Certbot akan otomatis update config Nginx.
