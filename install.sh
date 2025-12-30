@@ -1,8 +1,13 @@
 #!/bin/bash
 
 #===============================================================================
-# RAF NET ISP Website - Installer Script v4.0
+# RAF NET ISP Website - Installer Script v5.0
 # Untuk Ubuntu 20.04 dengan Node.js v20
+# 
+# Fitur:
+# - Backend + Frontend dalam 1 port (810)
+# - Tidak perlu Nginx (cocok untuk server dengan aaPanel)
+# - Express serve static files
 #
 # Cara penggunaan:
 #   chmod +x install.sh
@@ -17,7 +22,7 @@ APP_DIR="/var/www/rafnet"
 DOMAIN="rafnet.my.id"
 ADMIN_USERNAME="admin"
 ADMIN_PASSWORD="Admin123!"
-BACKEND_PORT="4500"
+APP_PORT="810"
 
 # ==================== WARNA ====================
 RED='\033[0;31m'
@@ -40,7 +45,8 @@ print_warn() { echo -e "${YELLOW}[!]${NC} $1"; }
 print_err() { echo -e "${RED}[ERROR]${NC} $1"; }
 
 # ==================== CEK PRASYARAT ====================
-print_header "RAF NET Installer v4.0"
+print_header "RAF NET Installer v5.0"
+echo "Port: $APP_PORT (Backend + Frontend)"
 
 if [ "$EUID" -ne 0 ]; then
     print_err "Jalankan dengan sudo: sudo ./install.sh"
@@ -63,8 +69,10 @@ CURRENT_DIR=$(pwd)
 print_ok "Source: $CURRENT_DIR"
 
 echo ""
-echo "Domain: $DOMAIN"
-echo "Admin: $ADMIN_USERNAME / $ADMIN_PASSWORD"
+echo "Konfigurasi:"
+echo "  Domain   : $DOMAIN"
+echo "  Port     : $APP_PORT"
+echo "  Admin    : $ADMIN_USERNAME / $ADMIN_PASSWORD"
 echo ""
 read -p "Lanjutkan? (y/n): " -n 1 -r
 echo ""
@@ -74,21 +82,42 @@ echo ""
 print_header "Step 1: Install Dependencies"
 
 apt-get update -qq
-apt-get install -y build-essential python3 nginx rsync curl > /dev/null 2>&1
+apt-get install -y build-essential python3 rsync curl > /dev/null 2>&1
 print_ok "System dependencies installed"
 
 # ==================== STEP 2: COPY FILES ====================
 print_header "Step 2: Setup Directory"
 
-systemctl stop rafnet-backend 2>/dev/null || true
+systemctl stop rafnet 2>/dev/null || true
 
 mkdir -p $APP_DIR
 rsync -a --delete --exclude='node_modules' --exclude='.git' --exclude='*.db' \
     "$CURRENT_DIR/" "$APP_DIR/"
 print_ok "Files copied to $APP_DIR"
 
-# ==================== STEP 3: BUILD BACKEND ====================
-print_header "Step 3: Build Backend"
+# ==================== STEP 3: BUILD FRONTEND ====================
+print_header "Step 3: Build Frontend"
+
+cd $APP_DIR/frontend
+
+print_step "Cleaning old files..."
+rm -rf node_modules package-lock.json
+
+print_step "Installing dependencies..."
+npm install 2>&1 | tail -3
+print_ok "Dependencies installed"
+
+print_step "Building frontend..."
+npm run build 2>&1 | tail -5
+
+if [ ! -d "$APP_DIR/frontend/dist" ]; then
+    print_err "Frontend build failed!"
+    exit 1
+fi
+print_ok "Frontend built: $APP_DIR/frontend/dist"
+
+# ==================== STEP 4: BUILD BACKEND ====================
+print_header "Step 4: Build Backend"
 
 cd $APP_DIR/backend
 
@@ -102,28 +131,6 @@ print_ok "Backend built"
 
 mkdir -p $APP_DIR/backend/data
 
-# ==================== STEP 4: BUILD FRONTEND ====================
-print_header "Step 4: Build Frontend"
-
-cd $APP_DIR/frontend
-
-print_step "Cleaning old files..."
-rm -rf node_modules package-lock.json
-
-print_step "Installing dependencies (fresh)..."
-npm install 2>&1 | tail -5
-print_ok "Dependencies installed"
-
-print_step "Building frontend..."
-npm run build 2>&1 | tail -5
-
-if [ ! -d "$APP_DIR/frontend/dist" ]; then
-    print_err "Frontend build failed!"
-    print_warn "Try manually: cd $APP_DIR/frontend && rm -rf node_modules && npm install && npm run build"
-    exit 1
-fi
-print_ok "Frontend built"
-
 # ==================== STEP 5: JWT SECRET ====================
 print_header "Step 5: Generate JWT Secret"
 
@@ -133,9 +140,9 @@ print_ok "JWT Secret generated"
 # ==================== STEP 6: SYSTEMD SERVICE ====================
 print_header "Step 6: Setup Systemd"
 
-cat > /etc/systemd/system/rafnet-backend.service << EOF
+cat > /etc/systemd/system/rafnet.service << EOF
 [Unit]
-Description=RAF NET Backend
+Description=RAF NET Website (Backend + Frontend)
 After=network.target
 
 [Service]
@@ -147,7 +154,7 @@ ExecStart=/usr/bin/node dist/index.js
 Restart=always
 RestartSec=10
 Environment=NODE_ENV=production
-Environment=PORT=$BACKEND_PORT
+Environment=PORT=$APP_PORT
 Environment=DB_PATH=$APP_DIR/backend/data/rafnet.db
 Environment=JWT_SECRET=$JWT_SECRET
 
@@ -156,82 +163,18 @@ WantedBy=multi-user.target
 EOF
 
 systemctl daemon-reload
-systemctl enable rafnet-backend > /dev/null 2>&1
+systemctl enable rafnet > /dev/null 2>&1
 print_ok "Systemd service configured"
 
-# ==================== STEP 7: NGINX ====================
-print_header "Step 7: Setup Nginx"
-
-cat > /etc/nginx/sites-available/rafnet << 'NGINXCONF'
-server {
-    listen 80 default_server;
-    listen [::]:80 default_server;
-    server_name rafnet.my.id www.rafnet.my.id _;
-
-    root /var/www/rafnet/frontend/dist;
-    index index.html;
-
-    access_log /var/log/nginx/rafnet-access.log;
-    error_log /var/log/nginx/rafnet-error.log;
-
-    gzip on;
-    gzip_types text/plain text/css application/json application/javascript;
-
-    location /api {
-        proxy_pass http://127.0.0.1:4500;
-        proxy_http_version 1.1;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-
-    location /health {
-        proxy_pass http://127.0.0.1:4500;
-    }
-
-    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2)$ {
-        expires 1y;
-        add_header Cache-Control "public, immutable";
-    }
-
-    location / {
-        try_files $uri $uri/ /index.html;
-    }
-}
-NGINXCONF
-
-ln -sf /etc/nginx/sites-available/rafnet /etc/nginx/sites-enabled/
-rm -f /etc/nginx/sites-enabled/default 2>/dev/null || true
-nginx -t
-print_ok "Nginx configured"
-
-# ==================== STEP 8: PERMISSIONS ====================
-print_header "Step 8: Permissions"
+# ==================== STEP 7: PERMISSIONS ====================
+print_header "Step 7: Permissions"
 
 chown -R www-data:www-data $APP_DIR
 chmod -R 755 $APP_DIR
 print_ok "Permissions set"
 
-# ==================== STEP 9: START SERVICES ====================
-print_header "Step 9: Start Services"
-
-systemctl start rafnet-backend
-sleep 3
-
-if systemctl is-active --quiet rafnet-backend; then
-    print_ok "Backend running"
-else
-    print_err "Backend failed to start"
-    journalctl -u rafnet-backend -n 20 --no-pager
-    exit 1
-fi
-
-systemctl restart nginx
-print_ok "Nginx running"
-
-# ==================== STEP 10: SEED ADMIN ====================
-print_header "Step 10: Create Admin"
+# ==================== STEP 8: SEED ADMIN ====================
+print_header "Step 8: Create Admin"
 
 cd $APP_DIR/backend
 
@@ -297,39 +240,90 @@ node /tmp/seed.js
 rm /tmp/seed.js
 chown www-data:www-data $APP_DIR/backend/data/rafnet.db
 chmod 644 $APP_DIR/backend/data/rafnet.db
-
 print_ok "Admin user ready"
 
-systemctl restart rafnet-backend
+# ==================== STEP 9: START SERVICE ====================
+print_header "Step 9: Start Service"
+
+systemctl start rafnet
+sleep 3
+
+if systemctl is-active --quiet rafnet; then
+    print_ok "Service running on port $APP_PORT"
+else
+    print_err "Service failed to start"
+    journalctl -u rafnet -n 20 --no-pager
+    exit 1
+fi
+
+# ==================== STEP 10: VERIFY ====================
+print_header "Step 10: Verify"
+
 sleep 2
 
-# ==================== STEP 11: VERIFY ====================
-print_header "Step 11: Verify"
+HEALTH=$(curl -s http://127.0.0.1:$APP_PORT/health 2>/dev/null || echo "error")
+if [[ "$HEALTH" == *"ok"* ]]; then
+    print_ok "Health check: OK"
+else
+    print_warn "Health check failed"
+fi
 
-HEALTH=$(curl -s http://127.0.0.1:$BACKEND_PORT/health 2>/dev/null || echo "error")
-[[ "$HEALTH" == *"ok"* ]] && print_ok "Backend health: OK" || print_warn "Backend health failed"
+HTTP=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:$APP_PORT/ 2>/dev/null || echo "000")
+if [[ "$HTTP" == "200" ]]; then
+    print_ok "Frontend: OK"
+else
+    print_warn "Frontend response: $HTTP"
+fi
 
-HTTP=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1/ 2>/dev/null || echo "000")
-[[ "$HTTP" == "200" ]] && print_ok "Nginx: OK" || print_warn "Nginx: $HTTP"
+API=$(curl -s http://127.0.0.1:$APP_PORT/api/packages/active 2>/dev/null || echo "error")
+if [[ "$API" == "["* ]] || [[ "$API" == "[]" ]]; then
+    print_ok "API: OK"
+else
+    print_warn "API check failed"
+fi
 
 # ==================== DONE ====================
 print_header "INSTALLATION COMPLETE!"
 
+SERVER_IP=$(hostname -I | awk '{print $1}')
+
 echo ""
 echo -e "${GREEN}RAF NET berhasil diinstall!${NC}"
 echo ""
-echo "Website  : http://rafnet.my.id"
-echo "Admin    : http://rafnet.my.id/admin/login"
-echo "Username : $ADMIN_USERNAME"
-echo "Password : $ADMIN_PASSWORD"
+echo "============================================"
+echo "  AKSES"
+echo "============================================"
 echo ""
-echo "SSL Setup:"
-echo "  sudo apt install certbot python3-certbot-nginx"
-echo "  sudo certbot --nginx -d rafnet.my.id"
+echo "  Website  : http://$SERVER_IP:$APP_PORT"
+echo "  Admin    : http://$SERVER_IP:$APP_PORT/admin/login"
 echo ""
-echo "Commands:"
-echo "  systemctl status rafnet-backend"
-echo "  journalctl -u rafnet-backend -f"
+echo "  Username : $ADMIN_USERNAME"
+echo "  Password : $ADMIN_PASSWORD"
+echo ""
+echo "============================================"
+echo "  COMMANDS"
+echo "============================================"
+echo ""
+echo "  Status   : systemctl status rafnet"
+echo "  Logs     : journalctl -u rafnet -f"
+echo "  Restart  : systemctl restart rafnet"
+echo ""
+echo "============================================"
+echo "  SETUP DOMAIN (via aaPanel)"
+echo "============================================"
+echo ""
+echo "  1. Login aaPanel"
+echo "  2. Website > Add site > $DOMAIN"
+echo "  3. Edit config, tambahkan:"
+echo ""
+echo "     location / {"
+echo "         proxy_pass http://127.0.0.1:$APP_PORT;"
+echo "         proxy_http_version 1.1;"
+echo "         proxy_set_header Host \$host;"
+echo "         proxy_set_header X-Real-IP \$remote_addr;"
+echo "     }"
+echo ""
+echo "============================================"
 echo ""
 echo -e "${YELLOW}PENTING: Ganti password admin setelah login!${NC}"
 echo ""

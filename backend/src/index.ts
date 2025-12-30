@@ -5,6 +5,7 @@ dotenv.config();
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
+import path from 'path';
 import { initializeDatabase, closeDatabase, getDatabase } from './database';
 import { PackageRepository } from './repositories/package.repository';
 import { VoucherRepository } from './repositories/voucher.repository';
@@ -19,10 +20,13 @@ import { createAuthMiddleware } from './middleware/auth.middleware';
 import { createApiRoutes } from './routes';
 
 const app = express();
-const PORT = process.env.PORT || 4500;
+const PORT = process.env.PORT || 810;
 
-// Middleware
-app.use(helmet());
+// Middleware - relaxed helmet for serving static files
+app.use(helmet({
+  contentSecurityPolicy: false,
+  crossOriginEmbedderPolicy: false,
+}));
 app.use(cors());
 app.use(express.json());
 
@@ -62,6 +66,21 @@ function setupRoutes(): void {
   });
 
   app.use('/api', apiRoutes);
+
+  // Serve frontend static files in production
+  if (process.env.NODE_ENV === 'production') {
+    const frontendPath = path.join(__dirname, '../../frontend/dist');
+    
+    // Serve static files
+    app.use(express.static(frontendPath));
+    
+    // SPA fallback - all non-API routes go to index.html
+    app.get('*', (_req, res) => {
+      res.sendFile(path.join(frontendPath, 'index.html'));
+    });
+    
+    console.log(`Serving frontend from: ${frontendPath}`);
+  }
 }
 
 // Start server
