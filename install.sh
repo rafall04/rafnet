@@ -1,36 +1,25 @@
 #!/bin/bash
 
 #===============================================================================
-# RAF NET ISP Website - Installer Script
-# Untuk Ubuntu 20.04 dengan Node.js v20 yang sudah terinstall
+# RAF NET ISP Website - Installer Script v4.0
+# Untuk Ubuntu 20.04 dengan Node.js v20
 #
 # Cara penggunaan:
 #   chmod +x install.sh
 #   sudo ./install.sh
-#
-# Script ini akan:
-# 1. Install dependencies (nginx, build-essential)
-# 2. Setup direktori aplikasi
-# 3. Build backend dan frontend
-# 4. Konfigurasi systemd service
-# 5. Konfigurasi Nginx
-# 6. Seed admin user
-# 7. Start semua services
 #===============================================================================
 
 set -e
 
 # ==================== KONFIGURASI ====================
-# Ubah sesuai kebutuhan Anda
-
 APP_NAME="rafnet"
 APP_DIR="/var/www/rafnet"
-DOMAIN="raf.my.id"                    # Ganti dengan domain Anda
-ADMIN_USERNAME="admin"                 # Username admin
-ADMIN_PASSWORD="Admin123!"             # Password admin (GANTI!)
+DOMAIN="rafnet.my.id"
+ADMIN_USERNAME="admin"
+ADMIN_PASSWORD="Admin123!"
 BACKEND_PORT="4500"
 
-# ==================== WARNA OUTPUT ====================
+# ==================== WARNA ====================
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -38,7 +27,6 @@ BLUE='\033[0;34m'
 CYAN='\033[0;36m'
 NC='\033[0m'
 
-# ==================== FUNGSI HELPER ====================
 print_header() {
     echo ""
     echo -e "${CYAN}============================================${NC}"
@@ -46,168 +34,108 @@ print_header() {
     echo -e "${CYAN}============================================${NC}"
 }
 
-print_step() {
-    echo -e "${BLUE}[STEP]${NC} $1"
-}
-
-print_success() {
-    echo -e "${GREEN}[✓]${NC} $1"
-}
-
-print_warning() {
-    echo -e "${YELLOW}[!]${NC} $1"
-}
-
-print_error() {
-    echo -e "${RED}[✗]${NC} $1"
-}
-
-print_info() {
-    echo -e "${CYAN}[i]${NC} $1"
-}
-
-check_command() {
-    if command -v $1 &> /dev/null; then
-        return 0
-    else
-        return 1
-    fi
-}
+print_step() { echo -e "${BLUE}[STEP]${NC} $1"; }
+print_ok() { echo -e "${GREEN}[OK]${NC} $1"; }
+print_warn() { echo -e "${YELLOW}[!]${NC} $1"; }
+print_err() { echo -e "${RED}[ERROR]${NC} $1"; }
 
 # ==================== CEK PRASYARAT ====================
-print_header "RAF NET Installer"
+print_header "RAF NET Installer v4.0"
 
-echo ""
-echo "Konfigurasi:"
-echo "  - Domain: $DOMAIN"
-echo "  - App Directory: $APP_DIR"
-echo "  - Backend Port: $BACKEND_PORT"
-echo "  - Admin User: $ADMIN_USERNAME"
-echo ""
-
-# Cek root
 if [ "$EUID" -ne 0 ]; then
-    print_error "Script ini harus dijalankan sebagai root (sudo)"
-    echo "Jalankan: sudo ./install.sh"
+    print_err "Jalankan dengan sudo: sudo ./install.sh"
     exit 1
 fi
 
-# Cek Node.js
-if ! check_command node; then
-    print_error "Node.js tidak ditemukan!"
-    echo "Install Node.js terlebih dahulu"
+if ! command -v node &> /dev/null; then
+    print_err "Node.js tidak ditemukan!"
     exit 1
 fi
+print_ok "Node.js: $(node --version)"
+print_ok "npm: $(npm --version)"
 
-NODE_VERSION=$(node --version)
-print_success "Node.js terdeteksi: $NODE_VERSION"
-
-# Cek npm
-if ! check_command npm; then
-    print_error "npm tidak ditemukan!"
-    exit 1
-fi
-
-NPM_VERSION=$(npm --version)
-print_success "npm terdeteksi: $NPM_VERSION"
-
-# Cek apakah script dijalankan dari direktori yang benar
 if [ ! -f "package.json" ] || [ ! -d "backend" ] || [ ! -d "frontend" ]; then
-    print_error "Script harus dijalankan dari root direktori project RAF NET"
-    echo "Pastikan ada folder 'backend' dan 'frontend' di direktori ini"
+    print_err "Jalankan dari root direktori project"
     exit 1
 fi
 
 CURRENT_DIR=$(pwd)
-print_success "Direktori source: $CURRENT_DIR"
+print_ok "Source: $CURRENT_DIR"
 
 echo ""
-read -p "Lanjutkan instalasi? (y/n): " -n 1 -r
+echo "Domain: $DOMAIN"
+echo "Admin: $ADMIN_USERNAME / $ADMIN_PASSWORD"
 echo ""
-if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-    echo "Instalasi dibatalkan"
-    exit 0
-fi
+read -p "Lanjutkan? (y/n): " -n 1 -r
+echo ""
+[[ ! $REPLY =~ ^[Yy]$ ]] && exit 0
 
-# ==================== STEP 1: INSTALL DEPENDENCIES ====================
-print_header "Step 1: Install System Dependencies"
+# ==================== STEP 1: DEPENDENCIES ====================
+print_header "Step 1: Install Dependencies"
 
-print_step "Update package list..."
 apt-get update -qq
+apt-get install -y build-essential python3 nginx rsync curl > /dev/null 2>&1
+print_ok "System dependencies installed"
 
-print_step "Install build-essential..."
-apt-get install -y -qq build-essential python3 > /dev/null 2>&1
-print_success "build-essential terinstall"
+# ==================== STEP 2: COPY FILES ====================
+print_header "Step 2: Setup Directory"
 
-print_step "Install Nginx..."
-apt-get install -y -qq nginx > /dev/null 2>&1
-print_success "Nginx terinstall"
+systemctl stop rafnet-backend 2>/dev/null || true
 
-# ==================== STEP 2: SETUP DIREKTORI ====================
-print_header "Step 2: Setup Direktori Aplikasi"
-
-print_step "Membuat direktori $APP_DIR..."
 mkdir -p $APP_DIR
-
-print_step "Menyalin source code..."
-# Salin semua file kecuali node_modules
-rsync -av --exclude='node_modules' --exclude='.git' --exclude='*.db' \
-    "$CURRENT_DIR/" "$APP_DIR/" > /dev/null 2>&1
-print_success "Source code tersalin ke $APP_DIR"
+rsync -a --delete --exclude='node_modules' --exclude='.git' --exclude='*.db' \
+    "$CURRENT_DIR/" "$APP_DIR/"
+print_ok "Files copied to $APP_DIR"
 
 # ==================== STEP 3: BUILD BACKEND ====================
 print_header "Step 3: Build Backend"
 
 cd $APP_DIR/backend
 
-print_step "Install backend dependencies..."
-npm install --legacy-peer-deps 2>&1 | tail -3
-print_success "Backend dependencies terinstall"
+print_step "Installing dependencies..."
+npm install 2>&1 | tail -3
+print_ok "Dependencies installed"
 
-print_step "Build TypeScript..."
-npm run build 2>&1 | tail -3
-print_success "Backend built"
+print_step "Building TypeScript..."
+npm run build
+print_ok "Backend built"
 
-print_step "Setup database directory..."
 mkdir -p $APP_DIR/backend/data
-chmod 755 $APP_DIR/backend/data
-print_success "Database directory siap"
 
 # ==================== STEP 4: BUILD FRONTEND ====================
 print_header "Step 4: Build Frontend"
 
 cd $APP_DIR/frontend
 
-print_step "Install frontend dependencies..."
-npm install --legacy-peer-deps 2>&1 | tail -3
-print_success "Frontend dependencies terinstall"
+print_step "Cleaning old files..."
+rm -rf node_modules package-lock.json
 
-print_step "Build frontend untuk production..."
-npm run build 2>&1 | tail -3
-print_success "Frontend built"
+print_step "Installing dependencies (fresh)..."
+npm install 2>&1 | tail -5
+print_ok "Dependencies installed"
 
-# Verifikasi build
+print_step "Building frontend..."
+npm run build 2>&1 | tail -5
+
 if [ ! -d "$APP_DIR/frontend/dist" ]; then
-    print_error "Frontend build gagal - folder dist tidak ditemukan"
+    print_err "Frontend build failed!"
+    print_warn "Try manually: cd $APP_DIR/frontend && rm -rf node_modules && npm install && npm run build"
     exit 1
 fi
-print_success "Frontend dist folder terverifikasi"
+print_ok "Frontend built"
 
-# ==================== STEP 5: GENERATE JWT SECRET ====================
-print_header "Step 5: Generate Security Keys"
+# ==================== STEP 5: JWT SECRET ====================
+print_header "Step 5: Generate JWT Secret"
 
 JWT_SECRET=$(openssl rand -hex 32)
-print_success "JWT Secret generated"
+print_ok "JWT Secret generated"
 
-# ==================== STEP 6: SETUP SYSTEMD SERVICE ====================
-print_header "Step 6: Setup Systemd Service"
-
-print_step "Membuat service file..."
+# ==================== STEP 6: SYSTEMD SERVICE ====================
+print_header "Step 6: Setup Systemd"
 
 cat > /etc/systemd/system/rafnet-backend.service << EOF
 [Unit]
-Description=RAF NET Backend API
-Documentation=https://github.com/rafall04/rafnet
+Description=RAF NET Backend
 After=network.target
 
 [Service]
@@ -218,176 +146,106 @@ WorkingDirectory=$APP_DIR/backend
 ExecStart=/usr/bin/node dist/index.js
 Restart=always
 RestartSec=10
-StandardOutput=journal
-StandardError=journal
-SyslogIdentifier=rafnet-backend
-
-# Environment
 Environment=NODE_ENV=production
 Environment=PORT=$BACKEND_PORT
 Environment=DB_PATH=$APP_DIR/backend/data/rafnet.db
 Environment=JWT_SECRET=$JWT_SECRET
 
-# Security
-NoNewPrivileges=true
-PrivateTmp=true
-
 [Install]
 WantedBy=multi-user.target
 EOF
 
-print_success "Service file dibuat: /etc/systemd/system/rafnet-backend.service"
-
-print_step "Reload systemd daemon..."
 systemctl daemon-reload
-print_success "Systemd daemon reloaded"
-
-print_step "Enable service untuk auto-start..."
 systemctl enable rafnet-backend > /dev/null 2>&1
-print_success "Service enabled"
+print_ok "Systemd service configured"
 
-# ==================== STEP 7: SETUP NGINX ====================
+# ==================== STEP 7: NGINX ====================
 print_header "Step 7: Setup Nginx"
 
-print_step "Membuat Nginx config..."
-
-cat > /etc/nginx/sites-available/rafnet << EOF
-# RAF NET Nginx Configuration
-# Generated by installer script
-
+cat > /etc/nginx/sites-available/rafnet << 'NGINXCONF'
 server {
-    listen 80;
-    server_name $DOMAIN www.$DOMAIN _;
+    listen 80 default_server;
+    listen [::]:80 default_server;
+    server_name rafnet.my.id www.rafnet.my.id _;
 
-    # Frontend static files
-    root $APP_DIR/frontend/dist;
+    root /var/www/rafnet/frontend/dist;
     index index.html;
 
-    # Logging
     access_log /var/log/nginx/rafnet-access.log;
     error_log /var/log/nginx/rafnet-error.log;
 
-    # Gzip compression
     gzip on;
-    gzip_vary on;
-    gzip_min_length 1024;
-    gzip_proxied expired no-cache no-store private auth;
-    gzip_types text/plain text/css text/xml text/javascript application/x-javascript application/xml application/javascript application/json;
+    gzip_types text/plain text/css application/json application/javascript;
 
-    # Security headers
-    add_header X-Frame-Options "SAMEORIGIN" always;
-    add_header X-Content-Type-Options "nosniff" always;
-    add_header X-XSS-Protection "1; mode=block" always;
-
-    # API Proxy ke Backend
     location /api {
-        proxy_pass http://127.0.0.1:$BACKEND_PORT;
+        proxy_pass http://127.0.0.1:4500;
         proxy_http_version 1.1;
-        proxy_set_header Upgrade \$http_upgrade;
-        proxy_set_header Connection 'upgrade';
-        proxy_set_header Host \$host;
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto \$scheme;
-        proxy_cache_bypass \$http_upgrade;
-        proxy_connect_timeout 60s;
-        proxy_send_timeout 60s;
-        proxy_read_timeout 60s;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
     }
 
-    # Health check endpoint
     location /health {
-        proxy_pass http://127.0.0.1:$BACKEND_PORT;
-        proxy_http_version 1.1;
-        proxy_set_header Host \$host;
+        proxy_pass http://127.0.0.1:4500;
     }
 
-    # Static files caching
-    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
+    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2)$ {
         expires 1y;
         add_header Cache-Control "public, immutable";
-        try_files \$uri =404;
     }
 
-    # Frontend SPA - semua route ke index.html
     location / {
-        try_files \$uri \$uri/ /index.html;
-    }
-
-    # Deny access to hidden files
-    location ~ /\. {
-        deny all;
+        try_files $uri $uri/ /index.html;
     }
 }
-EOF
+NGINXCONF
 
-print_success "Nginx config dibuat"
-
-print_step "Enable site..."
 ln -sf /etc/nginx/sites-available/rafnet /etc/nginx/sites-enabled/
 rm -f /etc/nginx/sites-enabled/default 2>/dev/null || true
-print_success "Site enabled"
-
-print_step "Test Nginx config..."
 nginx -t
-print_success "Nginx config valid"
+print_ok "Nginx configured"
 
-# ==================== STEP 8: SET PERMISSIONS ====================
-print_header "Step 8: Set Permissions"
+# ==================== STEP 8: PERMISSIONS ====================
+print_header "Step 8: Permissions"
 
-print_step "Setting ownership ke www-data..."
 chown -R www-data:www-data $APP_DIR
-print_success "Ownership set"
-
-print_step "Setting file permissions..."
-find $APP_DIR -type d -exec chmod 755 {} \;
-find $APP_DIR -type f -exec chmod 644 {} \;
-chmod 755 $APP_DIR/backend/dist/index.js 2>/dev/null || true
-print_success "Permissions set"
+chmod -R 755 $APP_DIR
+print_ok "Permissions set"
 
 # ==================== STEP 9: START SERVICES ====================
 print_header "Step 9: Start Services"
 
-print_step "Starting backend service..."
 systemctl start rafnet-backend
 sleep 3
 
-# Cek apakah backend running
 if systemctl is-active --quiet rafnet-backend; then
-    print_success "Backend service running"
+    print_ok "Backend running"
 else
-    print_error "Backend service gagal start"
-    echo "Cek log dengan: journalctl -u rafnet-backend -n 50"
+    print_err "Backend failed to start"
+    journalctl -u rafnet-backend -n 20 --no-pager
     exit 1
 fi
 
-print_step "Restart Nginx..."
 systemctl restart nginx
-print_success "Nginx restarted"
+print_ok "Nginx running"
 
-# ==================== STEP 10: SEED ADMIN USER ====================
-print_header "Step 10: Seed Admin User"
+# ==================== STEP 10: SEED ADMIN ====================
+print_header "Step 10: Create Admin"
 
-print_step "Membuat admin user..."
 cd $APP_DIR/backend
 
-# Export environment variables untuk seed script
-export NODE_ENV=production
-export PORT=$BACKEND_PORT
-export DB_PATH=$APP_DIR/backend/data/rafnet.db
-export JWT_SECRET=$JWT_SECRET
-export ADMIN_USERNAME=$ADMIN_USERNAME
-export ADMIN_PASSWORD=$ADMIN_PASSWORD
-
-# Jalankan seed script
-node -e "
+cat > /tmp/seed.js << 'SEEDJS'
 const Database = require('better-sqlite3');
 const bcrypt = require('bcrypt');
 
-const db = new Database('$APP_DIR/backend/data/rafnet.db');
+const dbPath = process.env.DB_PATH;
+const username = process.env.ADMIN_USER;
+const password = process.env.ADMIN_PASS;
 
-// Create admin table if not exists
-db.exec(\`
+const db = new Database(dbPath);
+
+db.exec(`
   CREATE TABLE IF NOT EXISTS admins (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     username TEXT UNIQUE NOT NULL,
@@ -395,112 +253,83 @@ db.exec(\`
     role TEXT DEFAULT 'admin',
     created_at TEXT DEFAULT CURRENT_TIMESTAMP,
     updated_at TEXT DEFAULT CURRENT_TIMESTAMP
-  )
-\`);
+  );
+  CREATE TABLE IF NOT EXISTS packages (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    speed TEXT NOT NULL,
+    price INTEGER NOT NULL,
+    description TEXT,
+    is_active INTEGER DEFAULT 1,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+  );
+  CREATE TABLE IF NOT EXISTS vouchers (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    code TEXT UNIQUE NOT NULL,
+    duration TEXT NOT NULL,
+    price INTEGER NOT NULL,
+    is_active INTEGER DEFAULT 1,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+  );
+`);
 
-// Check if admin exists
-const existing = db.prepare('SELECT id FROM admins WHERE username = ?').get('$ADMIN_USERNAME');
+const existing = db.prepare('SELECT id FROM admins WHERE username = ?').get(username);
+const hash = bcrypt.hashSync(password, 10);
 
 if (existing) {
-  console.log('Admin user sudah ada, skip...');
+  db.prepare('UPDATE admins SET password_hash = ? WHERE username = ?').run(hash, username);
+  console.log('Admin password updated');
 } else {
-  const hash = bcrypt.hashSync('$ADMIN_PASSWORD', 10);
-  db.prepare('INSERT INTO admins (username, password_hash, role) VALUES (?, ?, ?)').run('$ADMIN_USERNAME', hash, 'admin');
-  console.log('Admin user berhasil dibuat');
+  db.prepare('INSERT INTO admins (username, password_hash, role) VALUES (?, ?, ?)').run(username, hash, 'admin');
+  console.log('Admin created');
 }
 
 db.close();
-" 2>&1
+SEEDJS
 
-print_success "Admin user ready"
+DB_PATH="$APP_DIR/backend/data/rafnet.db" \
+ADMIN_USER="$ADMIN_USERNAME" \
+ADMIN_PASS="$ADMIN_PASSWORD" \
+node /tmp/seed.js
 
-# Fix database permissions after seed
+rm /tmp/seed.js
 chown www-data:www-data $APP_DIR/backend/data/rafnet.db
 chmod 644 $APP_DIR/backend/data/rafnet.db
 
-# ==================== STEP 11: VERIFIKASI ====================
-print_header "Step 11: Verifikasi Instalasi"
+print_ok "Admin user ready"
 
-print_step "Test backend health endpoint..."
+systemctl restart rafnet-backend
 sleep 2
-HEALTH_RESPONSE=$(curl -s http://127.0.0.1:$BACKEND_PORT/health 2>/dev/null || echo "failed")
 
-if [[ "$HEALTH_RESPONSE" == *"ok"* ]]; then
-    print_success "Backend health check: OK"
-else
-    print_warning "Backend health check gagal, cek log"
-fi
+# ==================== STEP 11: VERIFY ====================
+print_header "Step 11: Verify"
 
-print_step "Test API endpoint..."
-API_RESPONSE=$(curl -s http://127.0.0.1:$BACKEND_PORT/api/packages/active 2>/dev/null || echo "failed")
+HEALTH=$(curl -s http://127.0.0.1:$BACKEND_PORT/health 2>/dev/null || echo "error")
+[[ "$HEALTH" == *"ok"* ]] && print_ok "Backend health: OK" || print_warn "Backend health failed"
 
-if [[ "$API_RESPONSE" == "["* ]] || [[ "$API_RESPONSE" == "[]" ]]; then
-    print_success "API endpoint: OK"
-else
-    print_warning "API endpoint tidak merespon dengan benar"
-fi
+HTTP=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1/ 2>/dev/null || echo "000")
+[[ "$HTTP" == "200" ]] && print_ok "Nginx: OK" || print_warn "Nginx: $HTTP"
 
-print_step "Test Nginx..."
-NGINX_RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1/ 2>/dev/null || echo "000")
-
-if [[ "$NGINX_RESPONSE" == "200" ]]; then
-    print_success "Nginx serving frontend: OK"
-else
-    print_warning "Nginx response code: $NGINX_RESPONSE"
-fi
-
-# ==================== SELESAI ====================
-print_header "Instalasi Selesai!"
+# ==================== DONE ====================
+print_header "INSTALLATION COMPLETE!"
 
 echo ""
 echo -e "${GREEN}RAF NET berhasil diinstall!${NC}"
 echo ""
-echo "============================================"
-echo "  INFORMASI PENTING"
-echo "============================================"
+echo "Website  : http://rafnet.my.id"
+echo "Admin    : http://rafnet.my.id/admin/login"
+echo "Username : $ADMIN_USERNAME"
+echo "Password : $ADMIN_PASSWORD"
 echo ""
-echo "📁 Direktori Aplikasi: $APP_DIR"
-echo "🌐 Domain: $DOMAIN"
-echo "🔌 Backend Port: $BACKEND_PORT"
-echo ""
-echo "👤 Admin Login:"
-echo "   URL: http://$DOMAIN/admin/login"
-echo "   Username: $ADMIN_USERNAME"
-echo "   Password: $ADMIN_PASSWORD"
-echo ""
-echo "🔐 JWT Secret tersimpan di:"
-echo "   /etc/systemd/system/rafnet-backend.service"
-echo ""
-echo "============================================"
-echo "  PERINTAH BERGUNA"
-echo "============================================"
-echo ""
-echo "# Cek status services:"
-echo "  systemctl status rafnet-backend"
-echo "  systemctl status nginx"
-echo ""
-echo "# Lihat logs:"
-echo "  journalctl -u rafnet-backend -f"
-echo "  tail -f /var/log/nginx/rafnet-error.log"
-echo ""
-echo "# Restart services:"
-echo "  systemctl restart rafnet-backend"
-echo "  systemctl restart nginx"
-echo ""
-echo "# Test endpoints:"
-echo "  curl http://localhost:$BACKEND_PORT/health"
-echo "  curl http://localhost/api/packages/active"
-echo ""
-echo "============================================"
-echo "  SETUP SSL (HTTPS)"
-echo "============================================"
-echo ""
-echo "Untuk mengaktifkan HTTPS dengan Let's Encrypt:"
-echo ""
+echo "SSL Setup:"
 echo "  sudo apt install certbot python3-certbot-nginx"
-echo "  sudo certbot --nginx -d $DOMAIN"
+echo "  sudo certbot --nginx -d rafnet.my.id"
 echo ""
-echo "============================================"
+echo "Commands:"
+echo "  systemctl status rafnet-backend"
+echo "  journalctl -u rafnet-backend -f"
 echo ""
-print_warning "PENTING: Ganti password admin setelah login pertama!"
+echo -e "${YELLOW}PENTING: Ganti password admin setelah login!${NC}"
 echo ""
