@@ -1604,6 +1604,18 @@
     background: #ffffff !important;
   }
   
+  /* When menu is open, hamburger X should be dark (light mode) */
+  .header .hamburger.open::before,
+  .header .hamburger.open::after {
+    background: #374151 !important;
+  }
+  
+  /* Dark mode - hamburger X stays light */
+  [data-theme="dark"] .header .hamburger.open::before,
+  [data-theme="dark"] .header .hamburger.open::after {
+    background: #ffffff !important;
+  }
+  
   .header:not(.header-scrolled) .theme-toggle.mobile-only {
     background: rgba(255, 255, 255, 0.25) !important;
     border-color: rgba(255, 255, 255, 0.4) !important;
